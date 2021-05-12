@@ -40,6 +40,7 @@ def range_ip(lowest_address, higher_address, max_thread=10):
     :return: None
     """
     thread_list = []
+    out = []
     with ThreadPoolExecutor(max_workers=max_thread) as executor:
         while lowest_address <= higher_address:
             future = executor.submit(ping, lowest_address)
@@ -47,10 +48,11 @@ def range_ip(lowest_address, higher_address, max_thread=10):
             lowest_address = lowest_address + 1
 
     for i in as_completed(thread_list):
+        info=""
         if i.result()['is_alive'] is True:
-            print("{:15s} is up".format(i.result()['IP']))
+            info="{:15s} is up".format(i.result()['IP'])
         else:
-            print("{:15s} is down".format(i.result()['IP']))
-
-
-range_ip(ip_address("192.168.1.0"), ip_address("192.168.1.32"))
+            info="{:15s} is down".format(i.result()['IP'])
+        print(info)
+        out.append(info)
+    return out

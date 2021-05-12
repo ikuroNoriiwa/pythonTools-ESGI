@@ -1,6 +1,11 @@
 #!/usr/bin/python3
 
-import argparse, ipaddress, sys
+from argparse import ArgumentParser
+from sys import exit, stderr
+
+from ipaddress import ip_address, ip_network
+
+from ping import range_ip
 
 """
 Usage
@@ -19,7 +24,7 @@ Scan:
 
 
 
-parser = argparse.ArgumentParser(description='Port scaning')
+parser = ArgumentParser(description='Port scaning')
 parser.add_argument('--thread','--threads','-t', metavar='thread', default=10, type=int, help='Change default threads use')
 parser.add_argument('--out','-o', metavar='out', default=10, type=int, help='out file')
 
@@ -50,12 +55,14 @@ def check_net_input(netstr):
     nets=[]
     errors=[]
     for net in netstr.split(','):
+        if net == '':
+            pass
         if '-' in net:
             net=net.split('-')
             net_ip=[]
             for ip in net:
                 try:
-                    ip_obj = ipaddress.ip_address(ip)
+                    ip_obj = ip_address(ip)
                     net_ip.append(ip_obj)
                 except ValueError:
                     errors.append("Invalide ip:{} format in range:{}".format(ip, net))
@@ -65,37 +72,49 @@ def check_net_input(netstr):
                 nets.append(net_ip)
         elif '/' in net:
             try:
-                net_hosts = list(ipaddress.ip_network(net).hosts())
+                net_hosts = list(ip_network(net).hosts())
                 nets.append([net_hosts[0],net_hosts[-1]])
             except ValueError:
                 errors.append("Invalide network:{}".format(net))
         else:
             try:
-                ip_obj = ipaddress.ip_address(net)
+                ip_obj = ip_address(net)
                 nets.append([ip_obj,ip_obj])
             except ValueError:
                 errors.append("Invalide ip:{}".format(net))
     return (nets, errors)
 
+
+def run_on_nets(func, nets):
+    out = []
+    for net in nets:
+        out += func(net[0], net[1], args.thread)
+    return out
+
+
 args = parser.parse_args()      
 
-if 'domain' in args and args.domain:
+## string array out info
+out=[]
+if args.action == 'dns' and 'domain' in args:
     if not args.brute and not args.file:
         parser.print_help()
-        sys.exit(1)
+        exit(1)
 else:
     
     nets, errors = check_net_input(args.net)
     
     if len(errors)!=0:
-        print("\033[41mWe found the following errors:\033[0m", file=sys.stderr)
+        print("\033[41mWe found the following errors:\033[0m", file=stderr)
         for err in errors:
-            print("\033[91m{}\033[0m".format(err), file=sys.stderr)
-        sys.exit(1)
+            print("\033[91m{}\033[0m".format(err), file=stderr)
+        exit(1)
 
-    if args.dns:
+    if args.action == 'dns':
         print("TODO dns reverse")
-    elif args.scan:
+    elif args.action == 'scan':
         print("TODO scan")    
-    elif args.ping:
-        print("TODO ping")
+    elif args.action == 'ping':
+        out = run_on_nets(range_ip, nets)
+
+## TODO export out to a file if option
