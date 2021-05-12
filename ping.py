@@ -4,7 +4,6 @@ from subprocess import PIPE, Popen
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from platform import system
 from os import devnull
-from sys import stderr
 
 __OS__ = system()
 
@@ -42,7 +41,6 @@ def range_ip(lowest_address, higher_address, max_thread=10, verbose=True):
     :return: None
     """
     thread_list = []
-    thread_list_ever_complited = []
     out = []
     with ThreadPoolExecutor(max_workers=max_thread) as executor:
         while lowest_address <= higher_address:

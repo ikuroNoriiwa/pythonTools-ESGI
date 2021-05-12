@@ -5,7 +5,9 @@ from sys import exit, stderr
 
 from ipaddress import ip_address, ip_network
 
-from ping import range_ip
+from reverse import range_ip as reverse_range_ip
+
+from ping import range_ip as ping_range_ip
 
 """
 Usage
@@ -24,7 +26,7 @@ Scan:
 
 
 
-parser = ArgumentParser(description='Port scaning')
+parser = ArgumentParser(description='Scanning tool')
 parser.add_argument('--thread','--threads','-t', metavar='thread', default=10, type=int, help='Change default threads use')
 parser.add_argument('--out','-o', metavar='out', default=10, type=int, help='out file')
 
@@ -40,9 +42,9 @@ parser_scan = subparsers.add_parser('scan', help='scan help')
 parser_scan.add_argument('--net', '--nets', '-n', metavar='net', type=str, required=True, help='net list xx-xx,xx/xx|xx')
 parser_scan.add_argument('--port', '--port-range', '--port-ranges','--ports','-p', metavar='port', default="1-65555", type=str, help='port list xx-xx,xx|xx')
 
-parser_dns = subparsers.add_parser('dns', help='dns help')
+parser_dns = subparsers.add_parser('dns', help='dns (--net | --domain (--file | --brute)')
 parser_dns.add_argument('--port','--ports','-p', metavar='port', default=53, type=int, help='non-standart port xx')
-parser_dns.add_argument('--dns', metavar='dns', type=str, help='specific dns server')
+parser_dns.add_argument('--dns', metavar='dns', default="", type=str, help='specific dns server')
 
 choice_parser_dns = parser_dns.add_mutually_exclusive_group(required=True)
 choice_parser_dns.add_argument('--net', '--nets', '-n', metavar='net', type=str, help='net list xx-xx,xx/xx|xx')
@@ -84,19 +86,30 @@ def check_net_input(netstr):
                 errors.append("Invalide ip:{}".format(net))
     return (nets, errors)
 
-
-def run_on_nets(func, nets):
-    out = []
-    for net in nets:
-        out += func(net[0], net[1], args.thread)
-    return out
+def error(msg, errors):
+    if len(errors)!=0:
+        print("\033[41m{}\033[0m".format(msg), file=stderr)
+        for err in errors:
+            print("\033[91m{}\033[0m".format(err), file=stderr)
+        exit(1)
 
 
 args = parser.parse_args()      
 
 ## string array out info
 out=[]
-if args.action == 'dns' and 'domain' in args:
+
+if args.action =='dns' and args.dns != "":
+    errors=[]
+    for ip in args.dns.split(','):
+        try:
+            ip_obj = ip_address(ip)
+        except ValueError:
+            errors.append("Invalide ip:{}".format(ip))
+    error("We found the following errors during dns ip parsing:", errors)
+        
+
+if args.action == 'dns' and args.domain:
     if not args.brute and not args.file:
         parser.print_help()
         exit(1)
@@ -104,17 +117,15 @@ else:
     
     nets, errors = check_net_input(args.net)
     
-    if len(errors)!=0:
-        print("\033[41mWe found the following errors:\033[0m", file=stderr)
-        for err in errors:
-            print("\033[91m{}\033[0m".format(err), file=stderr)
-        exit(1)
+    error("We found the following errors during net range parsing:", errors)
 
     if args.action == 'dns':
-        print("TODO dns reverse")
+        for net in nets:
+            out += reverse_range_ip(net[0], net[1], args.dns.split(',') if args.dns!="" else [], args.port ,args.thread)
     elif args.action == 'scan':
         print("TODO scan")    
     elif args.action == 'ping':
-        out = run_on_nets(range_ip, nets)
+        for net in nets:
+            out += ping_range_ip(net[0], net[1], args.thread)
 
 ## TODO export out to a file if option
