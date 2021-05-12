@@ -21,17 +21,19 @@ def ping(ip):
     else:
         p = Popen(['ping', '{}'.format(str(ip)), "-n", "2", "-4"], stdout=PIPE, stderr=open(devnull, 'w'))
     p.wait()
-    if p.poll():
-        # print(str(ip)+" is down", file=stderr)
-        dct = {"IP": str(ip), "is_alive": False}
-    else:
-        # print(str(ip)+" is up", file=stderr)
-        dct = {"IP": str(ip), "is_alive": True}
+    
+    dct = {"IP": str(ip), "is_alive": not p.poll()}
 
     return dct
 
+def get_info(dct):
+    return "{:15s} is {}".format(dct['IP'], 'up' if  dct['is_alive']else 'down')
 
-def range_ip(lowest_address, higher_address, max_thread=10):
+def verbose_thread(future):
+    print(get_info(future.result()))
+
+
+def range_ip(lowest_address, higher_address, max_thread=10, verbose=True):
     """
     Lance dans un ping toutes les IPs
     :param lowest_address: Première adresse de la série à scanner
@@ -40,19 +42,16 @@ def range_ip(lowest_address, higher_address, max_thread=10):
     :return: None
     """
     thread_list = []
+    thread_list_ever_complited = []
     out = []
     with ThreadPoolExecutor(max_workers=max_thread) as executor:
         while lowest_address <= higher_address:
             future = executor.submit(ping, lowest_address)
+            if verbose:
+                future.add_done_callback(verbose_thread)
             thread_list.append(future)
             lowest_address = lowest_address + 1
 
-    for i in as_completed(thread_list):
-        info=""
-        if i.result()['is_alive'] is True:
-            info="{:15s} is up".format(i.result()['IP'])
-        else:
-            info="{:15s} is down".format(i.result()['IP'])
-        print(info)
-        out.append(info)
+    for future in as_completed(thread_list):
+        out.append(get_info(future.result()))
     return out
