@@ -58,7 +58,7 @@ choice_parser_dns.add_argument('--net', '--nets', '-n', metavar='net', type=str,
 choice_parser_dns.add_argument('--domain', '--domains','-d', metavar='domain', type=str, help='domain to brute force XXXXXXXXXXX,XXXXXXXXXXXX,XXXXXXXXXXXX|XXXXXXXXXXXXXXX')
 domain_parser_dns = parser_dns.add_mutually_exclusive_group()
 domain_parser_dns.add_argument('--file', '-f', metavar='file', type=str, help='need an input file')
-domain_parser_dns.add_argument('--brute', '--brute-force', '-b', '--gen', '-g', metavar='brute', type=str, help='brute force hostname')
+domain_parser_dns.add_argument('--brute', '--brute-force', '-b', '--gen', '-g', action='store_true', default=False, help='brute force hostname')
 
 def check_net_input(netstr):
     nets=[]
@@ -114,6 +114,8 @@ if args.action == 'dns' and args.domain:
         exit(1)
     if args.file:
         resolve_file(args.domain, args.file, args.dns.split(',') if args.dns!="" else [], args.port, args.thread , verbose=True, file= False if args.out == "" else args.out)
+    elif args.brute:
+        print("TODO brute force dns")
 else:
     nets, errors = check_net_input(args.net)
     

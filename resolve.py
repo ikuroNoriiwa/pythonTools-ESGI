@@ -3,6 +3,7 @@
 from dns.resolver import Resolver
 from dns.exception import Timeout as DnsTimeout
 from dns.resolver import NoAnswer
+from dns.name import NoLabel
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from tools import error, Output
 from itertools import islice
@@ -15,6 +16,8 @@ def resolving(host, resolver, rs_type="A", i=0):
             return (-1, ['{}_timeout'.format(rs_type)])
         return resolving(host, resolver, rs_type, i+1)
     except NoAnswer as e:
+        return (0, [])
+    except NoLabel as e:
         return (0, [])
     except Exception as e:
         if 'The DNS query name does not exist: ' in str(e):
@@ -42,7 +45,7 @@ def resolve_hosts(hosts, domain, resolver, out_obj, max_thread=10):
 
     def verbose_thread(future):
         info=future.result()
-        out_obj.out(get_info(info), info['found'] > 0 )
+        out_obj.out(get_info(info), info['found'] != 0 )
 
     thread_list = []
     out = []
