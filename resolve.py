@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
+from sys import prefix
 from dns.resolver import Resolver
 from dns.exception import Timeout as DnsTimeout
 from dns.resolver import NoAnswer
 from dns.name import EmptyLabel
-from concurrent.futures import as_completed, ThreadPoolExecutor
+from concurrent.futures import as_completed, ThreadPoolExecutor, thread
 from tools import error, Output
 from itertools import islice
+from string import ascii_lowercase, digits
 
 def resolving(host, resolver, rs_type="A", i=0):
     try:
@@ -60,7 +62,7 @@ def resolve_hosts(hosts, domain, resolver, out_obj, max_thread=10):
     return out
 
 
-def resolve_file(domain, infile, dns=[], port=53, max_thread=10 , verbose=True, file=False):
+def init_resolve(domain, dns=[], port=53, verbose=True, file=False):
     resolver = Resolver()
     resolver.port=port
     if len(dns) > 0:
@@ -73,7 +75,11 @@ def resolve_file(domain, infile, dns=[], port=53, max_thread=10 , verbose=True, 
         error("Error resolving domains:",[domain])
     
     out_obj.out(get_info(domaininfo))
+    return (resolver, out_obj)
+
+def resolve_file(domain, infile, dns=[], port=53, max_thread=10 , verbose=True, file=False):
     
+    resolver, out_obj=init_resolve(domain, dns, port, verbose, file)
 
     try:
         with open(infile) as f:
@@ -84,3 +90,29 @@ def resolve_file(domain, infile, dns=[], port=53, max_thread=10 , verbose=True, 
 
     except Exception as e:
         error("Error opening file:", [infile])
+
+def resolve_brute(domain, dns=[], port=53, max_thread=10 , verbose=True, file=False):
+    
+    linker="-."    
+
+    resolver, out_obj=init_resolve(domain, dns, port, verbose, file)
+
+    prefix=''
+    hosts=[]
+    max_i=0
+    
+    def gen( prefix='', i=0):
+
+        if len(hosts) >= 10*max_thread:
+            resolve_hosts( hosts, domain, resolver.resolve, out_obj)
+            hosts.clear()
+            gen(prefix, i)
+        else:
+            for ch in list(ascii_lowercase+digits+("-." if i!=0 and prefix[-1]!="-" and prefix[-1]!="." and i<max_i-1 else "")) :
+                hosts.append(prefix+ch)
+                if i<max_i:
+                    gen( prefix+ch, i+1)
+
+    while True:
+        gen()
+        max_i+=1

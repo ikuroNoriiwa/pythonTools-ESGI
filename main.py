@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 
 from ipaddress import ip_address, ip_network
 
-from resolve import resolve_file
+from resolve import resolve_file, resolve_brute
 
 from reverse import range_ip as reverse_range_ip
 
@@ -16,14 +16,14 @@ from tools import error
 Usage
 Domain enum:
     python3 main.py dns --domain domain.totest
-
-Domain reverse resolve:
-    python3 main.py dns --net 192.168.1.0/24
-    
     ## Check https://github.com/OWASP/Amass/blob/master/examples/wordlists/ for other
     curl -L https://github.com/OWASP/Amass/raw/master/examples/wordlists/subdomains.lst -o /tmp/subdomains.lst \
         && python3 main.py dns -d test.com --file /tmp/subdomains.lst
 
+
+Domain reverse resolve:
+    python3 main.py dns --net 192.168.1.0/24
+    
 Ping:
     python3 main.py ping --net 192.168.1.0-192.168.1.198,10.1.0.0
 
@@ -115,7 +115,7 @@ if args.action == 'dns' and args.domain:
     if args.file:
         resolve_file(args.domain, args.file, args.dns.split(',') if args.dns!="" else [], args.port, args.thread , verbose=True, file= False if args.out == "" else args.out)
     elif args.brute:
-        print("TODO brute force dns")
+        resolve_brute(args.domain, args.dns.split(',')if args.dns!="" else [], args.port, args.thread, verbose=True, file= False if args.out == "" else args.out)
 else:
     nets, errors = check_net_input(args.net)
     
@@ -123,7 +123,7 @@ else:
 
     if args.action == 'dns':
         for net in nets:
-            out += reverse_range_ip(net[0], net[1], args.dns.split(',') if args.dns!="" else [], args.port ,args.thread)
+            out += reverse_range_ip(net[0], net[1], args.dns.split(',') if args.dns!="" else [], args.port ,args.thread, file= False if args.out == "" else args.out)
     elif args.action == 'scan':
         print("TODO scan")    
     elif args.action == 'ping':
