@@ -1,13 +1,16 @@
 #!/usr/bin/python3
 
 from argparse import ArgumentParser
-from sys import exit, stderr
 
 from ipaddress import ip_address, ip_network
+
+from resolve import resolve_file
 
 from reverse import range_ip as reverse_range_ip
 
 from ping import range_ip as ping_range_ip
+
+from tools import error
 
 """
 Usage
@@ -16,6 +19,10 @@ Domain enum:
 
 Domain reverse resolve:
     python3 main.py dns --net 192.168.1.0/24
+    
+    ## Check https://github.com/OWASP/Amass/blob/master/examples/wordlists/ for other
+    curl -L https://github.com/OWASP/Amass/raw/master/examples/wordlists/subdomains.lst -o /tmp/subdomains.lst \
+        && python3 main.py dns -d test.com --file /tmp/subdomains.lst
 
 Ping:
     python3 main.py ping --net 192.168.1.0-192.168.1.198,10.1.0.0
@@ -28,7 +35,7 @@ Scan:
 
 parser = ArgumentParser(description='Scanning tool')
 parser.add_argument('--thread','--threads','-t', metavar='thread', default=10, type=int, help='Change default threads use')
-parser.add_argument('--out','-o', metavar='out', default=10, type=int, help='out file')
+parser.add_argument('--out','-o', metavar='out', default="", type=str, help='out file')
 
 subparsers = parser.add_subparsers(help='need one argument', dest='action')
 subparsers.required = True
@@ -86,14 +93,6 @@ def check_net_input(netstr):
                 errors.append("Invalide ip:{}".format(net))
     return (nets, errors)
 
-def error(msg, errors):
-    if len(errors)!=0:
-        print("\033[41m{}\033[0m".format(msg), file=stderr)
-        for err in errors:
-            print("\033[91m{}\033[0m".format(err), file=stderr)
-        exit(1)
-
-
 args = parser.parse_args()      
 
 ## string array out info
@@ -113,8 +112,9 @@ if args.action == 'dns' and args.domain:
     if not args.brute and not args.file:
         parser.print_help()
         exit(1)
+    if args.file:
+        resolve_file(args.domain, args.file, args.dns.split(',') if args.dns!="" else [], args.port, args.thread , verbose=True, file= False if args.out == "" else args.out)
 else:
-    
     nets, errors = check_net_input(args.net)
     
     error("We found the following errors during net range parsing:", errors)
