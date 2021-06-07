@@ -3,7 +3,7 @@
 from dns.reversename import from_address
 from dns.resolver import Resolver
 from dns.exception import Timeout as DnsTimeout
-from dns.resolver import NoAnswer
+from dns.resolver import NoAnswer, NoNameservers
 from dns.name import EmptyLabel
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from tools import error, Output
@@ -20,6 +20,8 @@ def reverse_resolve(ip, resolver, i=0):
             return {"IP": str(ip), "found": -1, "hostname": "timeout"}
         return reverse_resolve(ip, resolver, i+1)
     except NoAnswer as e:
+            return {"IP": str(ip), "found": 0, "hostname": "notexist"}
+    except NoNameservers as e:
             return {"IP": str(ip), "found": 0, "hostname": "notexist"}
     except EmptyLabel as e:
             return {"IP": str(ip), "found": 0, "hostname": "notexist"}
