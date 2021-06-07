@@ -11,6 +11,7 @@ from reverse import range_ip as reverse_range_ip
 from ping import range_ip as ping_range_ip
 
 from tools import error
+from scan import scan_ip
 
 """
 Usage
@@ -98,6 +99,10 @@ args = parser.parse_args()
 ## string array out info
 out=[]
 
+#declare iterable for port scan 
+scan_port=0
+
+
 if args.action =='dns' and args.dns != "":
     errors=[]
     for ip in args.dns.split(','):
@@ -125,7 +130,8 @@ else:
         for net in nets:
             out += reverse_range_ip(net[0], net[1], args.dns.split(',') if args.dns!="" else [], args.port ,args.thread, file= False if args.out == "" else args.out)
     elif args.action == 'scan':
-        print("TODO scan")    
+            print("TO CONTINUE scan, only scan from 1 to 65535 for now")    
+            scan_port = scan_ip(args)
     elif args.action == 'ping':
         for net in nets:
             out += ping_range_ip(net[0], net[1], args.thread)
