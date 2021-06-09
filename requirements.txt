@@ -1,1 +1,3 @@
 dnspython
+git+https://github.com/secdev/scapy
+ifaddr
