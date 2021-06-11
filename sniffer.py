@@ -10,9 +10,33 @@ from time import sleep
 from socket import getservbyport
 
 
+class Logger():
+    def __init__(self, out=False, verbose=True):
+        self.out=out
+        self.verbose=verbose
+    def log(self, pkt):
+        if self.out:
+            wrpcap(self.out, pkt, append=True)
+        if self.verbose:
+            ip_layer = pkt.getlayer(IP)
+            if ip_layer.haslayer(TCP) or ip_layer.haslayer(UDP):
+                ip_layer_3_proto = 'tcp' if ip_layer.haslayer(TCP) else 'udp'
+                try:
+                    print("[!] New {} Packet of normal Application request {}: {}:{} -> {}:{}".format( ip_layer_3_proto.upper(), getservbyport(ip_layer.dport, ip_layer_3_proto), ip_layer.src, ip_layer.sport, ip_layer.dst, ip_layer.dport))
+                except:
+                    try:
+                        print("[!] New {} Packet of normal Application response {}: {}:{} -> {}:{}".format( ip_layer_3_proto.upper(), getservbyport(ip_layer.sport, ip_layer_3_proto), ip_layer.src, ip_layer.sport, ip_layer.dst, ip_layer.dport))
+                    except:
+                        print("[!] New {} Packet {}:{} -> {}:{}".format( ip_layer_3_proto.upper(), ip_layer.src, ip_layer.sport, ip_layer.dst, ip_layer.dport))
+            else:
+                print("[!] New Packet {} -> {}".format(ip_layer.src, ip_layer.dst))
+    
+
 class Sniffer(Thread):
-    def  __init__(self, interface="eth0"):
+    def  __init__(self, logger, interface="eth0"):
         super().__init__()
+
+        self.logger=logger
 
         self.daemon = True
 
@@ -33,7 +57,7 @@ class Sniffer(Thread):
 
         sniff(
             opened_socket=self.socket,
-            prn=self.print_packet,
+            prn=self.logger.log,
             stop_filter=self.should_stop_sniffer
         )
     
@@ -46,27 +70,11 @@ class Sniffer(Thread):
     def should_stop_sniffer(self, packet):
         return self.stop_sniffer.isSet()
 
-    def print_packet(self, packet):
-        ip_layer = packet.getlayer(IP)
-        if ip_layer.haslayer(TCP) or ip_layer.haslayer(UDP):
-            ip_layer_3_proto = 'tcp' if ip_layer.haslayer(TCP) else 'udp'
-            try:
-                print("[!] New {} Packet on {} of normal Application request {}: {}:{} -> {}:{}".format( ip_layer_3_proto.upper(), self.interface, getservbyport(ip_layer.dport, ip_layer_3_proto), ip_layer.src, ip_layer.sport, ip_layer.dst, ip_layer.dport))
-            except:
-                try:
-                    print("[!] New {} Packet on {} of normal Application response {}: {}:{} -> {}:{}".format( ip_layer_3_proto.upper(), self.interface, getservbyport(ip_layer.sport, ip_layer_3_proto), ip_layer.src, ip_layer.sport, ip_layer.dst, ip_layer.dport))
-                except:
-                    print("[!] New {} Packet on {}: {}:{} -> {}:{}".format( ip_layer_3_proto.upper(), self.interface, ip_layer.src, ip_layer.sport, ip_layer.dst, ip_layer.dport))
-        else:
-            print("[!] New Packet on {}: {} -> {}".format(self.interface, ip_layer.src, ip_layer.dst))
-
-
 parser = ArgumentParser(description='Sniffer tool')
-parser.add_argument('--out','-o', metavar='out', default="", type=str, help='pckap out file')
+parser.add_argument('--out','-o', metavar='out', type=str, help='pckap out file')
 parser.add_argument('--interface','-i', metavar='interface', default="*", type=str, help='interface use to sniff possible value: * all eth0;eth1 eth0')
 
 args = parser.parse_args()
-
 
 interfaces_name=[]
 
@@ -86,8 +94,10 @@ else:
 
 sniffers=[]
 
+logger=Logger(args.out)
+
 for interface in interfaces_name:
-    sniffer=Sniffer(interface)
+    sniffer=Sniffer(logger, interface)
     sniffer.start()
     sniffers.append(sniffer)
 
